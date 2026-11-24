@@ -1,0 +1,55 @@
+# Launcher: Snakemake with the pixi software-deployment and SLURM executor
+# plugins. Rule envs live in their own workspace, workflow/envs/pixi.toml.
+[workspace]
+name = "igvf-metadata-smk"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+exclude-newer = "7d"
+
+[dependencies]
+python = "3.13.*"
+polars = "*"
+
+[pypi-dependencies]
+snakemake = { git = "https://github.com/snakemake/snakemake.git", rev = "184ad191db1b5517fa98139d0597453f241be781" }
+snakemake-software-deployment-plugin-pixi = { git = "https://github.com/cademirch/snakemake-software-deployment-plugin-pixi.git", rev = "315e0f3113daefc2dfeda3a48777cd1acb2707e0" }
+snakemake-executor-plugin-slurm = { git = "https://github.com/snakemake/snakemake-executor-plugin-slurm.git", rev = "8c2af56eb7dd1e0b78866691d6981f1d8327e0db" }
+snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
+
+[tasks]
+# Three reports, fetched anonymously from the live IGVF API.
+smoke = "snakemake --snakefile workflow/Snakefile --directory .tests/integration --profile profiles/local --cores 2 --forceall"
+
+# Targets must precede --config, so they ride in the second argument, not after `--`.
+[tasks.slurm]
+args = ["run_id", { arg = "snakemake_args", default = "" }]
+cmd = "snakemake {{ snakemake_args }} --profile profiles/slurm --slurm-jobname-prefix {{ run_id }} --config run_id={{ run_id }}"
+
+[feature.lint.dependencies]
+ruff = ">=0.17,<0.18"
+numpydoc = ">=1.11.0,<2"
+
+[feature.lint.tasks]
+lint = "ruff check && ruff format --check && numpydoc lint workflow/scripts/*.py"
+
+# Same Python packages as the rule env, so pytest can import the scripts.
+[feature.test.dependencies]
+python = "3.12.*"
+polars = ">=1.43"
+pytest = ">=8"
+
+[feature.test.tasks]
+test = "pytest"
+
+[environments]
+lint = { features = ["lint"], no-default-feature = true }
+test = { features = ["test"], no-default-feature = true }
+
+[exclude-newer]
+ca-certificates = "0d"
+certifi = "0d"
+pip = "0d"
+
+[pypi-exclude-newer]
+certifi = "0d"
+pip = "0d"
