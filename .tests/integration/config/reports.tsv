@@ -1,0 +1,4 @@
+report_id	url
+lab	https://api.data.igvf.org/search/?type=Lab&frame=object&limit=all&format=json
+award	https://api.data.igvf.org/search/?type=Award&frame=object&limit=all&format=json
+no_match	https://api.data.igvf.org/search/?type=Lab&name=no-such-lab&frame=object&limit=all&format=json

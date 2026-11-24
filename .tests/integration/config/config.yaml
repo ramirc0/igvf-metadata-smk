@@ -1,0 +1,6 @@
+outdir: results
+run_id: smoke
+pixi_env: default
+reports: config/reports.tsv
+fetch: all
+credentials: false
