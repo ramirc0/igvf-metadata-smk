@@ -1,0 +1,10 @@
+include: "rules/common.smk"
+include: "rules/fetch.smk"
+include: "rules/report.smk"
+
+
+rule all:
+    input:
+        expand(f"{OUTDIR}/parquets/{{report}}.parquet", report=FETCH),
+        f"{OUTDIR}/report/provenance.tsv",
+        f"{OUTDIR}/report/summary.png",
