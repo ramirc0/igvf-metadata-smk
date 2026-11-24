@@ -1,0 +1,13 @@
+outdir: results
+run_id: "2026-11-24"     # IGVF snapshot date. Outputs go to results/<run_id>/.
+pixi_env: default
+reports: config/reports.tsv
+
+# Reports this run materializes and records in provenance.tsv: `all`, or a
+# list of report_ids from the sheet, e.g. [lab, award, measurement_set].
+fetch: all
+
+# Dotenv file with IGVF_API_KEY and IGVF_SECRET_KEY (mode 600), or false for
+# anonymous. Anonymous snapshots hold released objects only. Use one mode per
+# run_id.
+credentials: ../.env
