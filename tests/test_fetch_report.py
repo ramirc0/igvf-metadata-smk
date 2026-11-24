@@ -19,11 +19,12 @@ RESPONSES = {
 }
 
 
-class Portal(BaseHTTPRequestHandler):
-    authorizations = []
+AUTHORIZATIONS = []
 
+
+class Portal(BaseHTTPRequestHandler):
     def do_GET(self):
-        Portal.authorizations.append(self.headers.get("Authorization"))
+        AUTHORIZATIONS.append(self.headers.get("Authorization"))
         status, document = RESPONSES[self.path]
         body = json.dumps(document).encode()
         self.send_response(status)
@@ -38,7 +39,7 @@ class Portal(BaseHTTPRequestHandler):
 
 @pytest.fixture
 def portal():
-    Portal.authorizations = []
+    AUTHORIZATIONS.clear()
     server = ThreadingHTTPServer(("127.0.0.1", 0), Portal)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{server.server_port}"
@@ -85,7 +86,7 @@ def test_credentials_become_a_basic_auth_header(portal, tmp_path, dotenv, capsys
     main(["--url", f"{portal}/ok", "--credentials", str(dotenv), "--output", str(out)])
 
     expected = "Basic " + base64.b64encode(f"KEYID123:{SECRET}".encode()).decode()
-    assert Portal.authorizations == [expected]
+    assert AUTHORIZATIONS == [expected]
     captured = capsys.readouterr()
     assert SECRET not in captured.out + captured.err
     assert expected not in captured.out + captured.err
@@ -94,4 +95,4 @@ def test_credentials_become_a_basic_auth_header(portal, tmp_path, dotenv, capsys
 def test_anonymous_fetch_sends_no_authorization(portal, tmp_path):
     main(["--url", f"{portal}/ok", "--output", str(tmp_path / "lab.json")])
 
-    assert Portal.authorizations == [None]
+    assert AUTHORIZATIONS == [None]

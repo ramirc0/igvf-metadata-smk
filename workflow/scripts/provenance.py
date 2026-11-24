@@ -1,0 +1,103 @@
+"""Record what was fetched: url, fetch time, bytes, checksum, and shape.
+
+One row per report, so a derived output can be traced back to the exact IGVF
+bytes it came from. The access mode is recorded because an anonymous fetch
+returns released objects only.
+"""
+
+import argparse
+import hashlib
+from datetime import UTC, datetime
+from pathlib import Path
+
+import polars as pl
+
+_CHUNK = 1 << 20
+
+
+def build_parser():
+    """Build the provenance.py command-line parser.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Parser for the provenance.py flags.
+    """
+    p = argparse.ArgumentParser(description="Summarize the fetched reports.")
+    p.add_argument("--raw", required=True, nargs="+", help="Raw report JSONs.")
+    p.add_argument("--parquet", required=True, nargs="+", help="Converted Parquets.")
+    p.add_argument("--sheet", required=True, help="Report sheet (report_id, url).")
+    p.add_argument("--run-id", required=True, help="Snapshot id for this run.")
+    p.add_argument(
+        "--authenticated",
+        action="store_true",
+        help="The reports were fetched with credentials.",
+    )
+    p.add_argument("-o", "--output", required=True, help="Provenance TSV to write.")
+    return p
+
+
+def sha256(path):
+    """Hash a file in chunks.
+
+    Parameters
+    ----------
+    path : str
+        File to hash.
+
+    Returns
+    -------
+    str
+        Hex SHA-256 digest of the file's bytes.
+    """
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(_CHUNK), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def main(argv=None):
+    """Join fetched bytes to converted shapes and write one row per report.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Command-line arguments. Defaults to `sys.argv[1:]`.
+    """
+    args = build_parser().parse_args(argv)
+
+    urls = {
+        row["report_id"]: row["url"]
+        for row in pl.read_csv(
+            args.sheet, separator="\t", infer_schema_length=0
+        ).iter_rows(named=True)
+    }
+    parquets = {Path(p).stem: p for p in args.parquet}
+
+    rows = []
+    for raw in sorted(args.raw):
+        report_id = Path(raw).name.removesuffix(".json")
+        stat = Path(raw).stat()
+        parquet = pl.scan_parquet(parquets[report_id])
+        rows.append(
+            {
+                "run_id": args.run_id,
+                "report_id": report_id,
+                "url": urls[report_id],
+                "authenticated": args.authenticated,
+                "fetched_at": datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+                "bytes": stat.st_size,
+                "sha256": sha256(raw),
+                "rows": parquet.select(pl.len()).collect().item(),
+                "columns": parquet.collect_schema().len(),
+            }
+        )
+
+    df = pl.DataFrame(rows)
+    df.write_csv(args.output, separator="\t")
+    print(f"{args.output}: {df.height} reports")
+
+
+if __name__ == "__main__":
+    main()
