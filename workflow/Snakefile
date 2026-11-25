@@ -8,3 +8,4 @@ rule all:
         expand(f"{OUTDIR}/parquets/{{report}}.parquet", report=FETCH),
         f"{OUTDIR}/report/provenance.tsv",
         f"{OUTDIR}/report/summary.png",
+        expand(f"{OUTDIR}/tsvs/{{report}}.tsv", report=FETCH if TSV else []),

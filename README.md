@@ -15,6 +15,7 @@ config/reports.tsv     report_id + url, one row per IGVF object type
       |
 fetch_report           search JSON -> results/<run_id>/reports/<report>.json
 report_parquet         @graph rows -> results/<run_id>/parquets/<report>.parquet
+report_tsv             optional flat copy -> results/<run_id>/tsvs/<report>.tsv
       |
 provenance             url, authenticated, fetched_at, bytes, sha256, rows, columns
 summary_card           headline numbers, rendered with Typst
@@ -24,6 +25,7 @@ summary_card           headline numbers, rendered with Typst
 | --- | --- |
 | `reports/<report>.json` | the portal's bytes, kept so a conversion change costs no download |
 | `parquets/<report>.parquet` | one row per object, one column per property |
+| `tsvs/<report>.tsv` | the same table as text, written when `tsv: true` |
 | `report/provenance.tsv` | what was fetched, when, how big, and under which access mode |
 | `report/summary.{typ,png}` | headline numbers for the snapshot |
 
@@ -40,6 +42,19 @@ frame returns every property of every object.
 - `@id` and `@type` are stored as `id` and `type`. Columns are sorted by name.
 - An object omits a property it does not set. A table has a column only if at
   least one fetched object sets it.
+
+### Flat TSV
+
+Set `tsv: true` in `config/config.yaml` to also write each table as a TSV. A
+TSV cell holds one string, so nested columns are flattened:
+
+- An array of scalars is joined with `|`.
+- A nested object, or an array of them, is a JSON string.
+- A null is an empty cell. So is an empty array.
+
+Cells with a tab, a newline or a quote are quoted the CSV way. Read the files
+with a CSV parser, not `cut` or `awk`. The TSVs took 702 MiB against 91 MiB of
+Parquet for the 2026-11-24 snapshot.
 
 ### Access mode
 
@@ -91,6 +106,7 @@ pixi run slurm 2026-11-24                           # SLURM, run_id as argument
 snakemake --profile profiles/local -n -p            # dry run
 snakemake --profile profiles/local --config fetch='[lab,award]'   # two reports
 snakemake --profile profiles/local --config run_id=2026-11-24-public credentials=false
+snakemake --profile profiles/local --config tsv=true              # add flat TSVs
 pixi run test                                       # unit tests
 pixi run smoke                                      # three reports from the live API, anonymous
 pixi run lint                                       # ruff check, ruff format --check, numpydoc lint

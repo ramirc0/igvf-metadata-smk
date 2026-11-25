@@ -118,6 +118,8 @@ def _credentials():
 
 
 CREDENTIALS = _credentials()
+# --config tsv=true arrives as a string, not a YAML bool.
+TSV = str(config["tsv"]).lower() == "true"
 
 
 wildcard_constraints:

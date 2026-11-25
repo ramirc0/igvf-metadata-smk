@@ -1,4 +1,4 @@
-# IGVF search JSON -> Parquet, one report per job.
+# IGVF search JSON -> Parquet -> optional flat TSV, one report per job.
 
 
 rule fetch_report:
@@ -44,6 +44,29 @@ rule report_parquet:
         exec &> >(tee {log:q})
 
         python {workflow.basedir:q}/scripts/report_to_parquet.py \
+            --input {input:q} \
+            --output {output:q}
+
+        sync {output:q}
+        """
+
+
+rule report_tsv:
+    input:
+        f"{OUTDIR}/parquets/{{report}}.parquet",
+    output:
+        f"{OUTDIR}/tsvs/{{report}}.tsv",
+    log:
+        f"{LOGDIR}/report_tsv/{{report}}.txt",
+    benchmark:
+        f"{BENCHDIR}/report_tsv/{{report}}.tsv",
+    software:
+        SOFTWARE_ENV
+    shell:
+        r"""
+        exec &> >(tee {log:q})
+
+        python {workflow.basedir:q}/scripts/parquet_to_tsv.py \
             --input {input:q} \
             --output {output:q}
 

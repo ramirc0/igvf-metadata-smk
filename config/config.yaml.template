@@ -11,3 +11,7 @@ fetch: all
 # anonymous. Anonymous snapshots hold released objects only. Use one mode per
 # run_id.
 credentials: ../.env
+
+# Also write results/<run_id>/tsvs/<report>.tsv, a flat copy of each table.
+# Arrays are joined with "|". Nested objects are JSON strings.
+tsv: false

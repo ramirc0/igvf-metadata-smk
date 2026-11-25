@@ -4,3 +4,4 @@ pixi_env: default
 reports: config/reports.tsv
 fetch: all
 credentials: false
+tsv: true
